@@ -46,7 +46,17 @@ class GoogleDriveClient:
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
-                creds = flow.run_local_server(port=0)
+                port = int(os.environ.get("GOOGLE_OAUTH_PORT", "8080"))
+                # bind_addr="0.0.0.0" нужен, чтобы локальный сервер авторизации был
+                # доступен снаружи контейнера при пробросе портов в Docker; для
+                # redirect_uri при этом используется host="localhost", как того
+                # требует loopback-схема OAuth у Google.
+                creds = flow.run_local_server(
+                    host="localhost",
+                    port=port,
+                    bind_addr="0.0.0.0",
+                    open_browser=False,
+                )
             with open(token_path, "w") as f:
                 f.write(creds.to_json())
         return creds
