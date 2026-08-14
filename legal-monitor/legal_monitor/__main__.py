@@ -15,6 +15,7 @@ import sys
 from legal_monitor.config import get_settings
 from legal_monitor.cookie_service.service import CookieService
 from legal_monitor.core import db, orchestrator, registry
+from legal_monitor.doc_analyzer.client import DocumentAnalyzer
 from legal_monitor.kad_client.search import KadClient
 from legal_monitor.notifier.telegram import TelegramNotifier
 from legal_monitor.pochta_client.client import PochtaClient
@@ -82,6 +83,15 @@ def main(argv: list[str] | None = None) -> int:
         pochta_client = PochtaClient(login=settings.pochta_login, password=settings.pochta_password)
         telegram = TelegramNotifier(bot_token=settings.telegram_bot_token, chat_id=settings.telegram_chat_id)
 
+        analyzer = (
+            DocumentAnalyzer(api_key=settings.anthropic_api_key, model=settings.anthropic_model)
+            if settings.anthropic_api_key
+            else None
+        )
+        doc_analysis_runner = orchestrator.DocumentAnalysisRunner(
+            kad_client=kad_client, user_agent=settings.kad_user_agent, analyzer=analyzer
+        )
+
         orchestrator.run_once(
             conn,
             kad_client,
@@ -89,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
             pochta_client,
             telegram,
             default_claim_response_days=settings.default_claim_response_days,
+            doc_analysis_runner=doc_analysis_runner,
             dry_run=args.dry_run,
         )
         return 0

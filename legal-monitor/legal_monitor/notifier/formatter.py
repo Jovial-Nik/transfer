@@ -19,10 +19,26 @@ TELEGRAM_MESSAGE_LIMIT = 4096
 
 
 @dataclass
+class EventAnalysisDisplay:
+    """AI-generated read of the event's PDF, if one existed and analysis succeeded."""
+
+    summary: str | None = None
+    deadline: date | None = None
+    deadline_basis: str | None = None
+    error: str | None = None
+
+
+@dataclass
+class CaseEventDisplay:
+    event: CaseEventData
+    analysis: EventAnalysisDisplay | None = None
+
+
+@dataclass
 class CaseUpdate:
     case_number: str
     counterparty: str
-    new_events: list[CaseEventData] = field(default_factory=list)
+    new_events: list[CaseEventDisplay] = field(default_factory=list)
     new_hearings: list[HearingData] = field(default_factory=list)
 
 
@@ -60,11 +76,20 @@ def _fmt_dt(dt: datetime | None) -> str:
 
 def _render_case_block(update: CaseUpdate) -> str:
     lines = [f"<b>{escape(update.case_number)}</b> ({escape(update.counterparty)})"]
-    for event in update.new_events:
+    for ce in update.new_events:
+        event = ce.event
         header = f"  • {escape(event.event_type)} от {_fmt_date(event.event_date, '%d.%m')} — {escape(event.description)}"
         lines.append(header)
         if event.document_url:
             lines.append(f'    <a href="{escape(event.document_url)}">[PDF]</a>')
+        if ce.analysis:
+            if ce.analysis.summary:
+                lines.append(f"    🤖 {escape(ce.analysis.summary)}")
+            if ce.analysis.deadline:
+                basis = f" ({escape(ce.analysis.deadline_basis)})" if ce.analysis.deadline_basis else ""
+                lines.append(f"    ⏰ срок: {_fmt_date(ce.analysis.deadline)}{basis} — проверьте вручную")
+            if ce.analysis.error:
+                lines.append(f"    ⚠️ не удалось проанализировать документ ({escape(ce.analysis.error)})")
     for hearing in update.new_hearings:
         place = escape(hearing.court)
         if hearing.address:

@@ -67,6 +67,18 @@ CREATE TABLE IF NOT EXISTS parcel_events (
 );
 CREATE INDEX IF NOT EXISTS idx_parcel_events_parcel_id ON parcel_events(parcel_id);
 
+CREATE TABLE IF NOT EXISTS document_analysis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_event_id INTEGER NOT NULL UNIQUE REFERENCES case_events(id),
+    document_type TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    explicit_deadlines TEXT,
+    rule_deadline TEXT,
+    rule_deadline_basis TEXT,
+    analyzed_at TEXT NOT NULL,
+    analysis_error TEXT
+);
+
 CREATE TABLE IF NOT EXISTS run_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TEXT NOT NULL,

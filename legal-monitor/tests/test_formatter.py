@@ -1,7 +1,14 @@
 from datetime import date, datetime
 
 from legal_monitor.core.models import CaseEventData, HearingData
-from legal_monitor.notifier.formatter import CaseUpdate, ParcelUpdate, RunSummary, build_messages
+from legal_monitor.notifier.formatter import (
+    CaseEventDisplay,
+    CaseUpdate,
+    EventAnalysisDisplay,
+    ParcelUpdate,
+    RunSummary,
+    build_messages,
+)
 
 
 def test_silent_when_nothing_changed_and_both_sources_ok() -> None:
@@ -28,12 +35,14 @@ def test_company_name_with_quotes_is_escaped() -> None:
         case_number="А07-12345/2025",
         counterparty='ООО "Ромашка" & Co <тест>',
         new_events=[
-            CaseEventData(
-                event_type="Определение",
-                event_date=date(2026, 8, 13),
-                publish_date=date(2026, 8, 13),
-                description="Назначено заседание",
-                document_url=None,
+            CaseEventDisplay(
+                event=CaseEventData(
+                    event_type="Определение",
+                    event_date=date(2026, 8, 13),
+                    publish_date=date(2026, 8, 13),
+                    description="Назначено заседание",
+                    document_url=None,
+                )
             )
         ],
     )
@@ -74,12 +83,14 @@ def test_long_message_is_split_under_telegram_limit() -> None:
             case_number=f"А07-{i}/2025",
             counterparty="ООО Ромашка",
             new_events=[
-                CaseEventData(
-                    event_type="Определение",
-                    event_date=date(2026, 8, 13),
-                    publish_date=date(2026, 8, 13),
-                    description="Текст определения " * 20,
-                    document_url=None,
+                CaseEventDisplay(
+                    event=CaseEventData(
+                        event_type="Определение",
+                        event_date=date(2026, 8, 13),
+                        publish_date=date(2026, 8, 13),
+                        description="Текст определения " * 20,
+                        document_url=None,
+                    )
                 )
             ],
         )
@@ -96,6 +107,37 @@ def test_long_message_is_split_under_telegram_limit() -> None:
     messages = build_messages(summary)
     assert len(messages) > 1
     assert all(len(m) <= 4096 for m in messages)
+
+
+def test_document_analysis_rendering() -> None:
+    update = CaseUpdate(
+        case_number="А07-12345/2025",
+        counterparty="ООО Ромашка",
+        new_events=[
+            CaseEventDisplay(
+                event=CaseEventData(
+                    event_type="Решение",
+                    event_date=date(2026, 8, 13),
+                    publish_date=date(2026, 8, 13),
+                    description="Иск удовлетворён",
+                    document_url="https://kad.arbitr.ru/doc.pdf",
+                ),
+                analysis=EventAnalysisDisplay(
+                    summary="Суд удовлетворил иск полностью.",
+                    deadline=date(2026, 9, 12),
+                    deadline_basis="ст. 259 АПК РФ — 1 месяц со дня принятия решения в полном объёме",
+                ),
+            )
+        ],
+    )
+    summary = RunSummary(
+        run_date=date(2026, 8, 14), kad_ok=True, kad_error=None, pochta_ok=True, pochta_error=None, case_updates=[update]
+    )
+    text = build_messages(summary)[0]
+    assert "Суд удовлетворил иск полностью." in text
+    assert "12.09.2026" in text
+    assert "ст. 259 АПК РФ" in text
+    assert "проверьте вручную" in text
 
 
 def test_hearing_rendering() -> None:

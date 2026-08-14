@@ -1,3 +1,4 @@
+anthropic>=0.90
 httpx>=0.27
 playwright>=1.45
 beautifulsoup4>=4.12

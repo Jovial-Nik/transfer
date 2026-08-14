@@ -52,11 +52,11 @@ def update_case_meta(
 
 def record_case_event(
     conn: sqlite3.Connection, case_id: int, case_number: str, event: CaseEventData
-) -> bool:
-    """Returns True if this is a genuinely new event (not seen before)."""
+) -> int | None:
+    """Returns the new row id if this is a genuinely new event, or None if it was already seen."""
     event_hash = differ.case_event_hash(case_number, event.event_type, event.event_date, event.description)
     try:
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO case_events "
             "(case_id, event_hash, event_type, event_date, publish_date, description, document_url, first_seen_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -72,9 +72,37 @@ def record_case_event(
             ),
         )
         conn.commit()
-        return True
+        return cur.lastrowid
     except sqlite3.IntegrityError:
-        return False
+        return None
+
+
+def record_document_analysis(
+    conn: sqlite3.Connection,
+    case_event_id: int,
+    document_type: str,
+    summary: str,
+    explicit_deadlines_json: str,
+    rule_deadline: date | None,
+    rule_deadline_basis: str | None,
+    analysis_error: str | None = None,
+) -> None:
+    conn.execute(
+        "INSERT INTO document_analysis "
+        "(case_event_id, document_type, summary, explicit_deadlines, rule_deadline, rule_deadline_basis, analyzed_at, analysis_error) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            case_event_id,
+            document_type,
+            summary,
+            explicit_deadlines_json,
+            rule_deadline.isoformat() if rule_deadline else None,
+            rule_deadline_basis,
+            _now(),
+            analysis_error,
+        ),
+    )
+    conn.commit()
 
 
 def record_hearing(conn: sqlite3.Connection, case_id: int, case_number: str, hearing: HearingData) -> bool:
