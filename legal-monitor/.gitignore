@@ -1,0 +1,9 @@
+.env
+data/
+*.db
+cookies_cache.json
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+logs/*.log

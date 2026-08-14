@@ -1,0 +1,28 @@
+{
+  "_comment": "SYNTHETIC FIXTURE - NOT a captured real response. See kad_search_synthetic.html header comment and docs/kad-endpoints.md for why.",
+  "Success": true,
+  "Result": {
+    "TotalCount": 2,
+    "PageSize": 25,
+    "Items": [
+      {
+        "CaseId": "a1b2c3d4",
+        "CaseNumber": "А07-12345/2025",
+        "DateRegister": "2026-08-13T00:00:00",
+        "Courts": [{"Name": "Арбитражный суд Республики Башкортостан"}],
+        "Judges": [{"Name": "Иванова И.И."}],
+        "Plaintiffs": [{"Name": "ООО \"Ромашка\"", "Inn": "0276000000"}],
+        "Respondents": [{"Name": "ООО \"Химснаб\"", "Inn": "0264000001"}]
+      },
+      {
+        "CaseId": "e5f6a7b8",
+        "CaseNumber": "А40-67890/2025",
+        "DateRegister": "2026-08-10T00:00:00",
+        "Courts": [{"Name": "Арбитражный суд города Москвы"}],
+        "Judges": [{"Name": "Петров П.П."}],
+        "Plaintiffs": [{"Name": "АО \"Реактив-Опт\"", "Inn": "7701000002"}],
+        "Respondents": [{"Name": "ООО \"Лабторг\"", "Inn": "7702000003"}]
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+services:
+  monitor:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    # no restart / no exposed ports: this is a one-shot batch job invoked by
+    # cron on the host (`docker compose run --rm monitor run --once`), not a
+    # long-running service.

@@ -1,0 +1,6 @@
+# Runs the daily cycle at 08:50 Ufa time (UTC+5) on weekdays only — courts and
+# the post office don't move on weekends, so there is nothing to check.
+# If your server clock is UTC (check with `timedatectl` / `date -u`), 08:50
+# Ufa time is 03:50 UTC, as below. Adjust the hour if your server's timezone
+# differs.
+50 3 * * 1-5 cd /opt/legal-monitor && docker compose run --rm monitor run --once >> logs/cron.log 2>&1
