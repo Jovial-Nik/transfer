@@ -1,39 +1,43 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
-from kad_arbitr_api.browser import CaptchaDetected, NoVerifiedSession, kad_browser
-from kad_arbitr_api.client import KadArbitrClient
-from kad_arbitr_api.models import CaseDetails, CaseDocument, SearchParams, SearchResult
+from kad_arbitr_api import ofdata_client as ofdata_module
+from kad_arbitr_api.models import LegalCasesQuery, LegalCasesResult
+from kad_arbitr_api.ofdata_client import OfdataClient, OfdataError
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await kad_browser.start()
+    ofdata_module.ofdata_client = OfdataClient()
     try:
         yield
     finally:
-        await kad_browser.stop()
+        await ofdata_module.ofdata_client.aclose()
 
 
 app = FastAPI(
     title="kad.arbitr.ru API",
-    description="API для извлечения информации о делах и документов из картотеки арбитражных дел",
-    version="0.1.0",
+    description=(
+        "API для получения сведений об арбитражных делах компаний и ИП. "
+        "Обёртка над официальным API ofdata.ru (данные Федеральных арбитражных судов)."
+    ),
+    version="0.2.0",
     lifespan=lifespan,
 )
 
-client = KadArbitrClient(kad_browser)
+
+def get_client() -> OfdataClient:
+    return ofdata_module.ofdata_client
 
 
-@app.exception_handler(CaptchaDetected)
-@app.exception_handler(NoVerifiedSession)
-async def _unavailable_handler(request: Request, exc: Exception) -> JSONResponse:
-    return JSONResponse(status_code=503, content={"detail": str(exc)})
+@app.exception_handler(OfdataError)
+async def _ofdata_error_handler(request: Request, exc: OfdataError) -> JSONResponse:
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
 @app.get("/health")
@@ -41,29 +45,9 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
-@app.post("/search", response_model=SearchResult)
-async def search(params: SearchParams) -> SearchResult:
-    return await client.search(params)
-
-
-@app.get("/cases/{case_id}", response_model=CaseDetails)
-async def get_case(case_id: str) -> CaseDetails:
-    return await client.get_case(case_id)
-
-
-@app.get("/cases/{case_id}/documents", response_model=list[CaseDocument])
-async def list_documents(case_id: str) -> list[CaseDocument]:
-    return await client.list_documents(case_id)
-
-
-@app.get("/documents/{case_id}/{document_index}")
-async def download_document(case_id: str, document_index: int) -> Response:
-    documents = await client.list_documents(case_id)
-    document = next(
-        (d for d in documents if d.document_id == f"{case_id}:{document_index}"), None
-    )
-    if document is None:
-        raise HTTPException(status_code=404, detail="Документ не найден")
-
-    body, content_type = await client.download_document(document.file_url)
-    return Response(content=body, media_type=content_type)
+@app.get("/legal-cases", response_model=LegalCasesResult)
+async def legal_cases(
+    query: LegalCasesQuery = Depends(),
+    client: OfdataClient = Depends(get_client),
+) -> LegalCasesResult:
+    return await client.legal_cases(query)

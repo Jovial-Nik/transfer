@@ -1,54 +1,58 @@
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
-
-
-class SearchParams(BaseModel):
-    participant: Optional[str] = Field(default=None, description="Наименование участника дела")
-    judge: Optional[str] = Field(default=None, description="ФИО судьи")
-    court: Optional[str] = Field(default=None, description="Наименование суда")
-    case_number: Optional[str] = Field(default=None, description="Номер дела")
-    date_from: Optional[str] = Field(default=None, description="Дата регистрации, начало периода, дд.мм.гггг")
-    date_to: Optional[str] = Field(default=None, description="Дата регистрации, конец периода, дд.мм.гггг")
-    page: int = Field(default=1, ge=1, description="Номер страницы результатов")
+from pydantic import BaseModel, Field, model_validator
 
 
-class CaseSummary(BaseModel):
-    case_id: str = Field(description="Идентификатор дела (GUID из ссылки /Card/{id})")
-    case_number: str
-    court: Optional[str] = None
-    judge: Optional[str] = None
-    plaintiffs: list[str] = Field(default_factory=list)
-    defendants: list[str] = Field(default_factory=list)
-    registration_date: Optional[str] = None
-    url: str
+class LegalCasesQuery(BaseModel):
+    """Параметры запроса к /legal-cases. Нужно указать inn или ogrn."""
 
+    inn: Optional[str] = Field(default=None, description="ИНН компании или ИП")
+    ogrn: Optional[str] = Field(default=None, description="ОГРН компании или ОГРНИП")
+    kpp: Optional[str] = Field(default=None, description="КПП (уточняет вместе с ИНН)")
+    role: Optional[Literal["plaintiff", "defendant"]] = Field(
+        default=None, description="Роль в деле: истец или ответчик"
+    )
+    active: Optional[bool] = Field(default=None, description="Только незавершённые дела")
+    date_from: Optional[str] = Field(default=None, description="Дата начала периода, ГГГГ-ММ-ДД")
+    date_to: Optional[str] = Field(default=None, description="Дата конца периода, ГГГГ-ММ-ДД")
+    claim_amount_from: Optional[float] = Field(default=None, description="Мин. сумма иска")
+    claim_amount_to: Optional[float] = Field(default=None, description="Макс. сумма иска")
+    page: int = Field(default=1, ge=1, description="Номер страницы")
+    sort: Optional[Literal["date", "-date"]] = Field(default=None, description="Сортировка по дате")
 
-class CaseDocument(BaseModel):
-    document_id: str = Field(description="Идентификатор документа для скачивания через /documents/{document_id}")
-    title: str
-    document_date: Optional[str] = None
-    instance: Optional[str] = None
-    file_url: str = Field(description="Прямая ссылка на файл на kad.arbitr.ru")
+    @model_validator(mode="after")
+    def _require_inn_or_ogrn(self) -> "LegalCasesQuery":
+        if not self.inn and not self.ogrn:
+            raise ValueError("Нужно указать inn или ogrn")
+        return self
 
 
 class CaseParty(BaseModel):
-    role: str = Field(description='Например "Истец" или "Ответчик"')
-    name: str
+    inn: Optional[str] = Field(default=None, alias="ИНН")
+    name: Optional[str] = Field(default=None, alias="Наим")
+    address: Optional[str] = Field(default=None, alias="Адрес")
+
+    model_config = {"populate_by_name": True}
 
 
-class CaseDetails(BaseModel):
-    case_id: str
-    case_number: str
-    court: Optional[str] = None
-    judge: Optional[str] = None
-    case_type: Optional[str] = None
-    parties: list[CaseParty] = Field(default_factory=list)
-    documents: list[CaseDocument] = Field(default_factory=list)
-    url: str
+class LegalCase(BaseModel):
+    case_number: str = Field(alias="Номер")
+    case_id: str = Field(alias="UUID")
+    kad_url: Optional[str] = Field(default=None, alias="СтрКАД")
+    date: Optional[str] = Field(default=None, alias="Дата")
+    court: Optional[str] = Field(default=None, alias="Суд")
+    plaintiffs: list[CaseParty] = Field(default_factory=list, alias="Ист")
+    defendants: list[CaseParty] = Field(default_factory=list, alias="Ответ")
+    claim_amount: Optional[float] = Field(default=None, alias="СуммИск")
+
+    model_config = {"populate_by_name": True}
 
 
-class SearchResult(BaseModel):
-    page: int
-    items: list[CaseSummary]
-    has_next_page: bool
+class LegalCasesResult(BaseModel):
+    total_records: int = Field(alias="ЗапВсего")
+    total_pages: int = Field(alias="СтрВсего")
+    current_page: int = Field(alias="СтрТекущ")
+    total_claim_amount: Optional[float] = Field(default=None, alias="ОбщСуммИск")
+    cases: list[LegalCase] = Field(default_factory=list, alias="Записи")
+
+    model_config = {"populate_by_name": True}

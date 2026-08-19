@@ -2,8 +2,6 @@
 credentials.json
 token.json
 migration_state.json
-kad_storage_state.json
-cookies_export.json
 __pycache__/
 *.pyc
 venv/
