@@ -12,7 +12,11 @@ CASE_ID_RE = re.compile(r"/Card/([0-9a-fA-F-]{36})")
 def _text(node) -> str | None:
     if node is None:
         return None
-    value = node.get_text(strip=True)
+    # Разделитель обязателен: в исходном HTML между соседними тегами часто
+    # нет пробельных символов, и без separator их текст склеивается
+    # (например, ФИО + "Данные скрыты" + ИНН превращаются в одну строку).
+    value = node.get_text(separator=" ", strip=True)
+    value = re.sub(r"\s+", " ", value).strip()
     return value or None
 
 
@@ -39,6 +43,14 @@ def parse_search_results(html: str) -> list[CaseSummary]:
         judge_node = row.find(class_="judge")
         date_node = row.find(class_="b-date")
 
+        court_text = _text(court_node)
+        judge_text = _text(judge_node)
+        # class="judge" - это вложенный элемент внутри ячейки с судом, из-за
+        # этого имя судьи попадает и в текст суда. Раз оно уже извлечено
+        # отдельно, вырезаем его из начала строки с судом.
+        if court_text and judge_text and court_text.startswith(judge_text):
+            court_text = court_text[len(judge_text):].strip() or None
+
         plaintiffs: list[str] = []
         defendants: list[str] = []
         plaintiff_block = row.find(class_="plaintiff")
@@ -54,8 +66,8 @@ def parse_search_results(html: str) -> list[CaseSummary]:
             CaseSummary(
                 case_id=case_id,
                 case_number=_text(case_link) or "",
-                court=_text(court_node),
-                judge=_text(judge_node),
+                court=court_text,
+                judge=judge_text,
                 plaintiffs=plaintiffs,
                 defendants=defendants,
                 registration_date=_text(date_node),
