@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m playwright install --with-deps chromium
+
+COPY kad_arbitr_api ./kad_arbitr_api
+
+EXPOSE 8000
+
+CMD ["uvicorn", "kad_arbitr_api.app:app", "--host", "0.0.0.0", "--port", "8000"]
