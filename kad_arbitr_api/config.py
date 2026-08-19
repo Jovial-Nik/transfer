@@ -17,6 +17,11 @@ class Settings:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     )
+    # Путь к файлу с cookies/localStorage сессии, пройденной человеком в
+    # обычном браузере (см. kad_arbitr_api/import_cookies.py). Без него
+    # запросы будут распознаны как автоматизированные и молча отклонены
+    # антибот-защитой сайта (см. README).
+    storage_state_path: str = os.environ.get("KAD_STORAGE_STATE", "kad_storage_state.json")
 
 
 settings = Settings()

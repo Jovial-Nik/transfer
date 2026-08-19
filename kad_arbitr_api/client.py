@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from kad_arbitr_api import parser
-from kad_arbitr_api.browser import KadBrowser, check_for_captcha
+from kad_arbitr_api.browser import KadBrowser, NoVerifiedSession, check_for_captcha
 from kad_arbitr_api.config import settings
 from kad_arbitr_api.models import CaseDetails, CaseDocument, SearchParams, SearchResult
 
@@ -25,7 +25,16 @@ class KadArbitrClient:
     def __init__(self, browser: KadBrowser) -> None:
         self._browser = browser
 
+    def _require_session(self) -> None:
+        if not self._browser.has_verified_session:
+            raise NoVerifiedSession(
+                "Нет сохранённой сессии, пройденной человеком в обычном браузере. "
+                "kad.arbitr.ru молча отклоняет запросы без неё. "
+                "Запустите python -m kad_arbitr_api.import_cookies (см. README)."
+            )
+
     async def search(self, params: SearchParams) -> SearchResult:
+        self._require_session()
         async with self._browser.lock():
             page = await self._browser.new_page()
             try:
@@ -61,6 +70,7 @@ class KadArbitrClient:
                 await asyncio.sleep(settings.request_delay_seconds)
 
     async def get_case(self, case_id: str) -> CaseDetails:
+        self._require_session()
         async with self._browser.lock():
             page = await self._browser.new_page()
             try:
@@ -78,6 +88,7 @@ class KadArbitrClient:
 
     async def download_document(self, file_url: str) -> tuple[bytes, str]:
         """Возвращает (содержимое файла, content-type)."""
+        self._require_session()
         async with self._browser.lock():
             page = await self._browser.new_page()
             try:

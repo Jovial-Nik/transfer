@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
@@ -12,6 +13,10 @@ class CaptchaDetected(Exception):
     """kad.arbitr.ru показал капчу/страницу проверки вместо ожидаемого контента."""
 
 
+class NoVerifiedSession(Exception):
+    """Нет сохранённой сессии, пройденной человеком (см. import_cookies.py)."""
+
+
 class KadBrowser:
     """
     Обёртка над одним переиспользуемым браузерным контекстом Playwright.
@@ -21,6 +26,13 @@ class KadBrowser:
     ботов), поэтому вместо requests используется headless-браузер. Все
     операции сериализуются одной блокировкой: параллельные вкладки с одного
     IP резко повышают шанс словить капчу.
+
+    Кроме того, сайт активно детектирует автоматизированные браузеры
+    (проверяет navigator.webdriver и прогоняет WASM-фингерпринт) и молча
+    отклоняет отправку формы поиска для них. Поэтому контекст обязательно
+    загружает storage_state (cookies), полученный из сессии, пройденной
+    человеком в обычном браузере — см. kad_arbitr_api/import_cookies.py и
+    README. Без него запросы будут стабильно проваливаться.
     """
 
     def __init__(self) -> None:
@@ -28,11 +40,27 @@ class KadBrowser:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._lock = asyncio.Lock()
+        self.has_verified_session = False
 
     async def start(self) -> None:
         self._playwright = await async_playwright().start()
         self._browser = await self._playwright.chromium.launch(headless=settings.headless)
-        self._context = await self._browser.new_context(user_agent=settings.user_agent)
+
+        storage_state = None
+        if os.path.exists(settings.storage_state_path):
+            storage_state = settings.storage_state_path
+            self.has_verified_session = True
+        else:
+            logger.warning(
+                "Файл сессии %s не найден — запросы к kad.arbitr.ru, скорее всего, "
+                "будут молча отклонены антибот-защитой. См. README: "
+                "kad_arbitr_api/import_cookies.py.",
+                settings.storage_state_path,
+            )
+
+        self._context = await self._browser.new_context(
+            user_agent=settings.user_agent, storage_state=storage_state
+        )
         self._context.set_default_navigation_timeout(settings.navigation_timeout_ms)
 
     async def stop(self) -> None:
