@@ -8,14 +8,17 @@ from kad_arbitr_api.models import CaseDetails, CaseDocument, SearchParams, Searc
 
 logger = logging.getLogger(__name__)
 
+# kad.arbitr.ru не проставляет полям формы поиска стабильные id (у части их
+# вообще нет), поэтому поля идентифицируются по уникальному placeholder.
 FORM_FIELD_MAP = {
-    "participant": "#sug-participants",
-    "judge": "#sug-judges",
-    "court": "#sug-courts",
-    "case_number": "#sug-cases",
-    "date_from": "#dateFrom",
-    "date_to": "#dateTo",
+    "participant": "textarea[placeholder='название, ИНН или ОГРН']",
+    "judge": "input[placeholder='фамилия судьи']",
+    "court": "input[placeholder='название суда']",
+    "case_number": "input[placeholder='например, А50-5568/08']",
 }
+# Оба поля дат имеют одинаковый placeholder "дд.мм.гггг" — различаются
+# только порядком на странице (первое - "с", второе - "по").
+DATE_PLACEHOLDER_SELECTOR = "input[placeholder='дд.мм.гггг']"
 
 
 class KadArbitrClient:
@@ -33,6 +36,12 @@ class KadArbitrClient:
                     value = getattr(params, field)
                     if value and await page.locator(selector).count():
                         await page.fill(selector, value)
+
+                date_inputs = page.locator(DATE_PLACEHOLDER_SELECTOR)
+                if params.date_from and await date_inputs.count() > 0:
+                    await date_inputs.nth(0).fill(params.date_from)
+                if params.date_to and await date_inputs.count() > 1:
+                    await date_inputs.nth(1).fill(params.date_to)
 
                 await page.click("#b-form-submit")
                 await page.wait_for_selector("#b-cases", timeout=settings.navigation_timeout_ms)
