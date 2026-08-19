@@ -55,9 +55,17 @@ class KadBrowser:
 kad_browser = KadBrowser()
 
 
-def check_for_captcha(html: str) -> None:
-    lowered = html.lower()
-    if "captcha" in lowered or "проверка на робота" in lowered:
+async def check_for_captcha(page: Page) -> None:
+    """
+    kad.arbitr.ru держит в разметке скрытый JS-шаблон капчи
+    (`<script type="x-jquery-tmpl" id="pravocaptcha_template">`) всегда, даже
+    когда капча не показана, — поэтому искать подстроку "captcha" в HTML
+    нельзя (ложные срабатывания на каждой странице). Реальная капча
+    определяется по тому, что видимый контейнер `.b-pravocaptcha-modal_wrapper`
+    (пустой в норме) действительно заполнен содержимым.
+    """
+    count = await page.locator(".b-pravocaptcha-modal_wrapper *").count()
+    if count > 0:
         raise CaptchaDetected(
             "kad.arbitr.ru запросил проверку на робота (капчу). "
             "Автоматическое решение капчи не поддерживается — снизьте частоту "

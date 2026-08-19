@@ -27,7 +27,7 @@ class KadArbitrClient:
             page = await self._browser.new_page()
             try:
                 await page.goto(settings.base_url)
-                check_for_captcha(await page.content())
+                await check_for_captcha(page)
 
                 for field, selector in FORM_FIELD_MAP.items():
                     value = getattr(params, field)
@@ -41,8 +41,8 @@ class KadArbitrClient:
                     await page.click(f"a[href='#page{params.page}']")
                     await page.wait_for_timeout(int(settings.request_delay_seconds * 1000))
 
+                await check_for_captcha(page)
                 html = await page.content()
-                check_for_captcha(html)
 
                 items = parser.parse_search_results(html)
                 next_page = parser.has_next_page(html, params.page)
@@ -57,8 +57,8 @@ class KadArbitrClient:
             try:
                 await page.goto(f"{settings.base_url}/Card/{case_id}")
                 await page.wait_for_load_state("networkidle")
+                await check_for_captcha(page)
                 html = await page.content()
-                check_for_captcha(html)
                 return parser.parse_case_card(html, case_id)
             finally:
                 await page.close()
@@ -75,8 +75,8 @@ class KadArbitrClient:
                 response = await page.goto(file_url)
                 if response is None:
                     raise RuntimeError(f"Не удалось получить документ: {file_url}")
+                await check_for_captcha(page)
                 body = await response.body()
-                check_for_captcha(body[:2000].decode("utf-8", errors="ignore"))
                 content_type = response.headers.get("content-type", "application/pdf")
                 return body, content_type
             finally:
