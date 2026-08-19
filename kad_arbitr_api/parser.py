@@ -20,6 +20,26 @@ def _text(node) -> str | None:
     return value or None
 
 
+def _rollover_names(block) -> list[str]:
+    """
+    Извлекает видимые имена участников дела из блока plaintiff/respondent.
+
+    Каждое имя обёрнуто в span.js-rollover, внутри которого спрятан ещё один
+    span.js-rolloverHtml (display:none) с полным ФИО + адресом + ИНН для
+    всплывающей подсказки. Нужен только видимый текст - первая строка до
+    вложенного тултипа.
+    """
+    if block is None:
+        return []
+    spans = block.find_all(class_="js-rollover") or [block]
+    names = []
+    for span in spans:
+        name = next(span.stripped_strings, None)
+        if name:
+            names.append(name)
+    return names
+
+
 def parse_search_results(html: str) -> list[CaseSummary]:
     """Разбирает таблицу результатов поиска (контейнер id="b-cases")."""
     soup = BeautifulSoup(html, "lxml")
@@ -41,7 +61,12 @@ def parse_search_results(html: str) -> list[CaseSummary]:
 
         court_node = row.find(class_="court")
         judge_node = row.find(class_="judge")
-        date_node = row.find(class_="b-date")
+        # У kad.arbitr.ru нет отдельной колонки "дата регистрации" в
+        # компактной таблице результатов - единственная дата, которая
+        # изредка встречается, это дата заседания по делам о банкротстве
+        # (значок "bankruptcy"), поэтому это не всегда точная дата
+        # регистрации дела, а лучшее доступное приближение.
+        bankruptcy_node = row.find(class_="bankruptcy")
 
         court_text = _text(court_node)
         judge_text = _text(judge_node)
@@ -51,16 +76,12 @@ def parse_search_results(html: str) -> list[CaseSummary]:
         if court_text and judge_text and court_text.startswith(judge_text):
             court_text = court_text[len(judge_text):].strip() or None
 
-        plaintiffs: list[str] = []
-        defendants: list[str] = []
-        plaintiff_block = row.find(class_="plaintiff")
-        if plaintiff_block is not None:
-            names = plaintiff_block.find_all(class_="js-rolloverHtml") or [plaintiff_block]
-            plaintiffs = [t for n in names if (t := _text(n))]
-        defendant_block = row.find(class_="respondent")
-        if defendant_block is not None:
-            names = defendant_block.find_all(class_="js-rolloverHtml") or [defendant_block]
-            defendants = [t for n in names if (t := _text(n))]
+        registration_date = None
+        if bankruptcy_node is not None and bankruptcy_node.get("title"):
+            registration_date = bankruptcy_node["title"].split()[0]
+
+        plaintiffs = _rollover_names(row.find(class_="plaintiff"))
+        defendants = _rollover_names(row.find(class_="respondent"))
 
         results.append(
             CaseSummary(
@@ -70,7 +91,7 @@ def parse_search_results(html: str) -> list[CaseSummary]:
                 judge=judge_text,
                 plaintiffs=plaintiffs,
                 defendants=defendants,
-                registration_date=_text(date_node),
+                registration_date=registration_date,
                 url=case_url,
             )
         )
