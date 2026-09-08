@@ -1,0 +1,46 @@
+#gmail-pdf-download-btn {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483647;
+  padding: 10px 16px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+#gmail-pdf-download-btn:hover {
+  background: #1765cc;
+}
+
+#gmail-pdf-print-holder {
+  display: none;
+}
+
+.gmail-pdf-subject {
+  display: none;
+}
+
+@media print {
+  body > *:not(#gmail-pdf-print-holder) {
+    display: none !important;
+  }
+
+  #gmail-pdf-print-holder {
+    display: block !important;
+    position: static !important;
+  }
+
+  .gmail-pdf-subject {
+    display: block !important;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+}
