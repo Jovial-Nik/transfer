@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>Письмо → PDF</title>
+<style>
+  body {
+    width: 320px;
+    font-family: Arial, sans-serif;
+    padding: 16px;
+    color: #202124;
+  }
+  h1 {
+    font-size: 15px;
+    margin: 0 0 10px;
+  }
+  p.hint {
+    font-size: 12px;
+    color: #5f6368;
+    margin: 0 0 14px;
+    line-height: 1.4;
+  }
+  input[type="file"] {
+    width: 100%;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  button {
+    width: 100%;
+    padding: 10px;
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #a9c6f5;
+    cursor: default;
+  }
+  #status {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #5f6368;
+    min-height: 16px;
+  }
+  #status.error {
+    color: #c5221f;
+  }
+</style>
+</head>
+<body>
+  <h1>Письмо (.eml) → PDF</h1>
+  <p class="hint">
+    В Gmail: откройте письмо → значок «⋮» → «Скачать сообщение» —
+    сохранится файл .eml. Выберите его здесь, чтобы получить настоящий
+    текстовый PDF (заголовки + текст письма, без скриншотов).
+  </p>
+  <input type="file" id="file" accept=".eml,message/rfc822" />
+  <button id="convert" disabled>Сконвертировать в PDF</button>
+  <div id="status"></div>
+
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/fonts/roboto-cyrillic-font.js"></script>
+  <script src="eml.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
