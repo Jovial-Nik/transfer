@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Каталог</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <form id="search-form" class="search">
+      <input id="search-input" type="search" placeholder="Аниме, фильм или сериал" autocomplete="off" enterkeyhint="search">
+    </form>
+    <div id="type-chips" class="chips">
+      <button data-type="all" class="chip active">Всё</button>
+      <button data-type="anime" class="chip">Аниме</button>
+      <button data-type="movie" class="chip">Фильмы</button>
+      <button data-type="tv" class="chip">Сериалы</button>
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <nav class="tabbar">
+    <button data-route="home" class="tab active">Каталог</button>
+    <button data-route="random" class="tab">Случайное</button>
+    <button data-route="list" class="tab">Мой список</button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
